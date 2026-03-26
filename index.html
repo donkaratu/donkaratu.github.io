@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+    <title>Tech Mastery • Full 6-Month Timetable</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #f2f4f8;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            padding: 12px;
+            color: #1e293b;
+        }
+
+        .app {
+            max-width: 500px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 20px 20px 12px 20px;
+            background: white;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .header h1 {
+            font-size: 1.65rem;
+            font-weight: 620;
+            letter-spacing: -0.3px;
+            color: #0f172a;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .badge {
+            font-size: 0.7rem;
+            font-weight: 500;
+            background: #eef2ff;
+            color: #2563eb;
+            padding: 4px 10px;
+            border-radius: 40px;
+        }
+        .sub {
+            font-size: 0.75rem;
+            color: #5b6e8c;
+            margin-top: 8px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* Month Selector */
+        .month-selector {
+            padding: 16px 16px 8px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            border-bottom: 1px solid #f0f0f0;
+            background: white;
+        }
+        .month-btn {
+            background: #f1f5f9;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .month-btn:active {
+            transform: scale(0.96);
+        }
+        .month-btn.active {
+            background: #0f172a;
+            color: white;
+        }
+        .month-btn.all-btn {
+            background: #eef2ff;
+            color: #2563eb;
+        }
+        .month-btn.all-btn.active {
+            background: #2563eb;
+            color: white;
+        }
+
+        /* Month title display */
+        .month-title {
+            padding: 12px 16px 4px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #2563eb;
+            letter-spacing: -0.2px;
+            background: white;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1e293b;
+            width: 52px;
+            height: 52px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            cursor: pointer;
+            border: none;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 500;
+            transition: 0.15s ease;
+            z-index: 200;
+            background: #0f172a;
+        }
+        .fab:active { transform: scale(0.94); background: #334155; }
+
+        .week-list {
+            padding: 12px 16px 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .week-card {
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1px solid #edf2f7;
+            overflow: hidden;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .week-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            background: #fafcff;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 600;
+        }
+        .week-header:active { background: #f1f5f9; }
+        .week-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            font-weight: 640;
+            color: #0f172a;
+        }
+        .week-num {
+            background: #eef2ff;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #2563eb;
+        }
+        .chevron {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            transition: transform 0.2s ease;
+        }
+        .week-card.collapsed .chevron {
+            transform: rotate(-90deg);
+        }
+        .week-days {
+            padding: 0 12px 12px 12px;
+            display: block;
+        }
+        .week-card.collapsed .week-days {
+            display: none;
+        }
+        .day-row {
+            display: flex;
+            padding: 12px 8px;
+            border-bottom: 1px solid #f0f2f5;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .day-row:last-child {
+            border-bottom: none;
+        }
+        .day-name {
+            min-width: 70px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #475569;
+        }
+        .topic-detail {
+            flex: 1;
+            font-size: 0.78rem;
+            line-height: 1.4;
+            color: #1e293b;
+        }
+        .duration {
+            font-size: 0.7rem;
+            color: #6c86a3;
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 30px;
+            white-space: nowrap;
+        }
+        .weekend-note {
+            background: #fef9e6;
+            margin: 8px 16px 20px 16px;
+            border-radius: 20px;
+            padding: 12px 16px;
+            font-size: 0.75rem;
+            color: #b45309;
+            border-left: 3px solid #f59e0b;
+        }
+        .footer-text {
+            text-align: center;
+            font-size: 0.65rem;
+            color: #8b9ab0;
+            padding: 16px 16px 24px;
+            border-top: 1px solid #eff3f8;
+            margin-top: 4px;
+        }
+        @media (max-width: 420px) {
+            .day-row { flex-wrap: wrap; gap: 6px; }
+            .day-name { min-width: auto; font-weight: 700; }
+            .month-btn { padding: 6px 12px; font-size: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="app" id="timetableApp">
+    <div class="header">
+        <h1>
+            📘 Timetable
+            <span class="badge">Full 6-Month Program</span>
+        </h1>
+        <div class="sub">
+            <span>🕒 Mon–Fri (2h/day)</span>
+            <span>🧪 Sat–Sun: assignments</span>
+        </div>
+    </div>
+
+    <!-- Month Selector -->
+    <div class="month-selector" id="monthSelector">
+        <button class="month-btn all-btn active" data-month="all">📅 All Months</button>
+        <button class="month-btn" data-month="1">📘 Month 1</button>
+        <button class="month-btn" data-month="2">📗 Month 2</button>
+        <button class="month-btn" data-month="3">📙 Month 3</button>
+        <button class="month-btn" data-month="4">📕 Month 4</button>
+        <button class="month-btn" data-month="5">📒 Month 5</button>
+        <button class="month-btn" data-month="6">📔 Month 6</button>
+    </div>
+
+    <!-- Dynamic Month Title (shows when a specific month is selected) -->
+    <div id="monthTitleDisplay" class="month-title" style="display: none;"></div>
+
+    <div id="weekContainer" class="week-list"></div>
+    
+    <div class="weekend-note">
+        📌 <strong>Weekend projects</strong> — practical tasks: security audits, Python coding, flowcharts & capstone prep.
+    </div>
+    <div class="footer-text">
+        ✅ Complete 6-Month Foundation | Next: Phase 2 (Security, Software, Embedded)
+    </div>
+</div>
+<button class="fab" id="pdfBtn" aria-label="Export PDF">📄</button>
+
+<script>
+    // ========== COMPLETE 6-MONTH TIMETABLE DATA ==========
+    // Month 1: Weeks 1-4 (Digital Fundamentals)
+    // Month 2: Weeks 5-8 (Programming Logic & Python Basics)
+    // Month 3: Weeks 9-12 (Internet & Web Basics)
+    // Month 4: Weeks 13-16 (Systems & Security)
+    // Month 5: Weeks 17-20 (Programming Foundations II)
+    // Month 6: Weeks 21-24 (Integration & Project)
+    
+    const fullWeeksData = [
+        // ===== MONTH 1: Digital Fundamentals (Weeks 1-4) =====
+        { week: 1, month: 1, days: [
+            { day: "Mon", topics: "Intro to Computers (Generations, Types) + CPU, RAM" },
+            { day: "Tue", topics: "Storage (SSD vs HDD) + Motherboard + Power Supply" },
+            { day: "Wed", topics: "Von Neumann Architecture + Peripherals (USB, HDMI, DP)" },
+            { day: "Thu", topics: "Specs & Balance + Basic Troubleshooting (8 steps)" },
+            { day: "Fri", topics: "OS roles (Process, Memory, Drivers) + Win vs macOS vs Linux" }
+        ] },
+        { week: 2, month: 1, days: [
+            { day: "Mon", topics: "File Systems (NTFS, APFS, ext4) + Advanced File Mgmt" },
+            { day: "Tue", topics: "System Settings + Installing/Uninstalling Software" },
+            { day: "Wed", topics: "Strong Passwords (no reuse) + Two-Factor Auth" },
+            { day: "Thu", topics: "Phishing, Scams, Social Engineering + Safe Browsing" },
+            { day: "Fri", topics: "Public WiFi risks + VPN basics + 3-2-1 Backup Rule" }
+        ] },
+        { week: 3, month: 1, days: [
+            { day: "Mon", topics: "What is Code? + Algorithms as step-by-step recipes" },
+            { day: "Tue", topics: "Breaking problems into steps + Flowcharts & Pseudocode" },
+            { day: "Wed", topics: "Pattern recognition + Debugging mindset" },
+            { day: "Thu", topics: "Python env setup (install, IDEs) + Editor choices" },
+            { day: "Fri", topics: "First program: print() + Syntax rules" }
+        ] },
+        { week: 4, month: 1, days: [
+            { day: "Mon", topics: "Variables + Data types (str, int, float, bool)" },
+            { day: "Tue", topics: "Type conversion + Getting user input (input())" },
+            { day: "Wed", topics: "String concatenation + f-strings, format()" },
+            { day: "Thu", topics: "String ops: repetition, len(), indexing, slicing" },
+            { day: "Fri", topics: "Review: variables, data types, string exercises" }
+        ] },
+        
+        // ===== MONTH 2: Control Flow & Loops (Weeks 5-8) =====
+        { week: 5, month: 2, days: [
+            { day: "Mon", topics: "Comparison operators (>, <, ==, !=, >=, <=)" },
+            { day: "Tue", topics: "Conditionals: if, elif, else" },
+            { day: "Wed", topics: "Multiple conditions: and/or, short-circuit" },
+            { day: "Thu", topics: "Nested conditionals + input validation" },
+            { day: "Fri", topics: "Practical coding: login system, grade calculator" }
+        ] },
+        { week: 6, month: 2, days: [
+            { day: "Mon", topics: "for loops with range() (start, stop, step)" },
+            { day: "Tue", topics: "Loop use cases: repetition, sum, pattern printing" },
+            { day: "Wed", topics: "while loops vs for, indefinite iteration" },
+            { day: "Thu", topics: "break, continue, infinite loops" },
+            { day: "Fri", topics: "Nested loops + loop exercises" }
+        ] },
+        { week: 7, month: 2, days: [
+            { day: "Mon", topics: "Error handling: try/except (ValueError, ZeroDivisionError)" },
+            { day: "Tue", topics: "Multiple exceptions + else/finally" },
+            { day: "Wed", topics: "Comprehensive review: variables, conditionals, loops" },
+            { day: "Thu", topics: "Mini-project planning: pseudocode, flowchart" },
+            { day: "Fri", topics: "Mini-project dev session #1" }
+        ] },
+        { week: 8, month: 2, days: [
+            { day: "Mon", topics: "Mini-project dev #2 + debugging" },
+            { day: "Tue", topics: "Project finalization + documentation" },
+            { day: "Wed", topics: "Peer review & feedback" },
+            { day: "Thu", topics: "Final review: all core concepts" },
+            { day: "Fri", topics: "Assessment & Phase 1 completion" }
+        ] },
+        
+        // ===== MONTH 3: Internet & Web Basics (Weeks 9-12) =====
+        { week: 9, month: 3, days: [
+            { day: "Mon", topics: "How the Internet Works: IP, DNS, Packets, Routing" },
+            { day: "Tue", topics: "HTTP/HTTPS Protocol, Status Codes, Client-Server Model" },
+            { day: "Wed", topics: "HTML Basics: Structure, Tags, Semantic Elements" },
+            { day: "Thu", topics: "CSS Fundamentals: Selectors, Box Model, Flexbox" },
+            { day: "Fri", topics: "Browser DevTools: Inspect, Console, Network Tab" }
+        ] },
+        { week: 10, month: 3, days: [
+            { day: "Mon", topics: "JavaScript Basics: Variables, Functions, Events" },
+            { day: "Tue", topics: "DOM Manipulation: Selecting, Modifying Elements" },
+            { day: "Wed", topics: "Forms and Input Handling + Validation" },
+            { day: "Thu", topics: "Web Security: HTTPS, CORS, Same-Origin Policy" },
+            { day: "Fri", topics: "Building a Simple Interactive Web Page" }
+        ] },
+        { week: 11, month: 3, days: [
+            { day: "Mon", topics: "Responsive Design: Media Queries, Mobile-First" },
+            { day: "Tue", topics: "CSS Frameworks: Tailwind CSS Basics" },
+            { day: "Wed", topics: "Local Storage: Saving Data in Browser" },
+            { day: "Thu", topics: "Fetch API: Making HTTP Requests" },
+            { day: "Fri", topics: "Building a Weather App (API Integration)" }
+        ] },
+        { week: 12, month: 3, days: [
+            { day: "Mon", topics: "Web Performance: Optimization Basics" },
+            { day: "Tue", topics: "Accessibility: WCAG Guidelines" },
+            { day: "Wed", topics: "Cross-Browser Compatibility" },
+            { day: "Thu", topics: "Project: Personal Portfolio Website" },
+            { day: "Fri", topics: "Portfolio Review & Deployment (Netlify/Vercel)" }
+        ] },
+        
+        // ===== MONTH 4: Systems & Security (Weeks 13-16) =====
+        { week: 13, month: 4, days: [
+            { day: "Mon", topics: "Linux Command Line: Navigation, File Operations" },
+            { day: "Tue", topics: "Process Management: ps, top, kill, systemctl" },
+            { day: "Wed", topics: "File Permissions: chmod, chown, umask" },
+            { day: "Thu", topics: "Shell Scripting: Variables, Loops, Conditionals" },
+            { day: "Fri", topics: "Automation with Bash Scripts" }
+        ] },
+        { week: 14, month: 4, days: [
+            { day: "Mon", topics: "Network Fundamentals: OSI Model, TCP/IP" },
+            { day: "Tue", topics: "Wireshark: Packet Analysis Basics" },
+            { day: "Wed", topics: "Firewall Configuration: iptables, ufw" },
+            { day: "Thu", topics: "SSH: Secure Remote Access, Key Management" },
+            { day: "Fri", topics: "Network Services: DNS, DHCP Configuration" }
+        ] },
+        { week: 15, month: 4, days: [
+            { day: "Mon", topics: "Cryptography: Hashing, Encryption, Digital Signatures" },
+            { day: "Tue", topics: "SSL/TLS: Certificates, HTTPS Implementation" },
+            { day: "Wed", topics: "Vulnerability Scanning: Nmap, OpenVAS" },
+            { day: "Thu", topics: "OWASP Top 10: Understanding Web Vulnerabilities" },
+            { day: "Fri", topics: "Security Hardening: System Configuration" }
+        ] },
+        { week: 16, month: 4, days: [
+            { day: "Mon", topics: "Incident Response: Detection, Containment, Recovery" },
+            { day: "Tue", topics: "Log Analysis: Monitoring with ELK Stack Basics" },
+            { day: "Wed", topics: "Backup Strategies: Automation, Testing Restores" },
+            { day: "Thu", topics: "Security Compliance: GDPR, ISO 27001 Basics" },
+            { day: "Fri", topics: "Capstone: Security Audit Project" }
+        ] },
+        
+        // ===== MONTH 5: Programming Foundations II (Weeks 17-20) =====
+        { week: 17, month: 5, days: [
+            { day: "Mon", topics: "OOP: Classes, Objects, Attributes, Methods" },
+            { day: "Tue", topics: "Inheritance, Polymorphism, Encapsulation" },
+            { day: "Wed", topics: "File I/O: Reading, Writing, Parsing Data" },
+            { day: "Thu", topics: "JSON/XML: Data Serialization and Deserialization" },
+            { day: "Fri", topics: "Working with CSV and Excel Files" }
+        ] },
+        { week: 18, month: 5, days: [
+            { day: "Mon", topics: "REST APIs: Design Principles, Endpoints" },
+            { day: "Tue", topics: "Consuming APIs: requests library, authentication" },
+            { day: "Wed", topics: "Building APIs: Flask/FastAPI Basics" },
+            { day: "Thu", topics: "Database Fundamentals: SQL, Tables, Relationships" },
+            { day: "Fri", topics: "SQLite: CRUD Operations with Python" }
+        ] },
+        { week: 19, month: 5, days: [
+            { day: "Mon", topics: "Version Control: Git Branching, Merging, Rebasing" },
+            { day: "Tue", topics: "Collaboration: GitHub Workflows, Pull Requests" },
+            { day: "Wed", topics: "Testing: Unit Tests with pytest" },
+            { day: "Thu", topics: "Debugging Advanced: pdb, logging" },
+            { day: "Fri", topics: "Code Documentation: Docstrings, Sphinx" }
+        ] },
+        { week: 20, month: 5, days: [
+            { day: "Mon", topics: "Data Structures: Lists, Stacks, Queues, Trees" },
+            { day: "Tue", topics: "Algorithms: Sorting, Searching, Recursion" },
+            { day: "Wed", topics: "Time Complexity: Big O Notation" },
+            { day: "Thu", topics: "Project: Library Management System" },
+            { day: "Fri", topics: "Code Review & Optimization" }
+        ] },
+        
+        // ===== MONTH 6: Integration & Project (Weeks 21-24) =====
+        { week: 21, month: 6, days: [
+            { day: "Mon", topics: "Full-Stack Integration: Frontend + Backend + DB" },
+            { day: "Tue", topics: "Authentication: JWT, Sessions, OAuth" },
+            { day: "Wed", topics: "Containerization: Docker Basics" },
+            { day: "Thu", topics: "CI/CD: GitHub Actions Fundamentals" },
+            { day: "Fri", topics: "Cloud Deployment: AWS/GCP Basics" }
+        ] },
+        { week: 22, month: 6, days: [
+            { day: "Mon", topics: "Capstone: Project Planning & Architecture" },
+            { day: "Tue", topics: "Sprint 1: Backend Development" },
+            { day: "Wed", topics: "Sprint 2: Frontend Development" },
+            { day: "Thu", topics: "Sprint 3: Integration & Testing" },
+            { day: "Fri", topics: "Sprint Review & Refinement" }
+        ] },
+        { week: 23, month: 6, days: [
+            { day: "Mon", topics: "Security Testing: Penetration Testing Basics" },
+            { day: "Tue", topics: "Performance Optimization: Load Testing" },
+            { day: "Wed", topics: "Documentation: Technical Writing" },
+            { day: "Thu", topics: "Presentation Skills: Demo Preparation" },
+            { day: "Fri", topics: "Final Project Polish" }
+        ] },
+        { week: 24, month: 6, days: [
+            { day: "Mon", topics: "Final Presentations: Project Demos" },
+            { day: "Tue", topics: "Peer Review & Feedback" },
+            { day: "Wed", topics: "Portfolio Building: GitHub Profile" },
+            { day: "Thu", topics: "Career Preparation: Resume, LinkedIn" },
+            { day: "Fri", topics: "Graduation & Phase 2 Orientation" }
+        ] }
+    ];
+
+    // Month names for display
+    const monthNames = {
+        1: "Month 1: Digital Fundamentals",
+        2: "Month 2: Programming Logic & Control Flow",
+        3: "Month 3: Internet & Web Basics",
+        4: "Month 4: Systems Administration & Security",
+        5: "Month 5: Programming Foundations II",
+        6: "Month 6: Integration & Capstone Project"
+    };
+
+    let currentFilter = "all"; // 'all' or month number
+
+    // Build collapsible UI from filtered data
+    function buildCollapsibleTimetable() {
+        const container = document.getElementById('weekContainer');
+        const monthTitleDisplay = document.getElementById('monthTitleDisplay');
+        if (!container) return;
+        
+        // Filter weeks based on current selection
+        let filteredWeeks = fullWeeksData;
+        if (currentFilter !== "all") {
+            const monthNum = parseInt(currentFilter);
+            filteredWeeks = fullWeeksData.filter(week => week.month === monthNum);
+        }
+        
+        // Show/hide month title
+        if (currentFilter !== "all") {
+            monthTitleDisplay.style.display = "block";
+            monthTitleDisplay.innerHTML = `📌 ${monthNames[currentFilter]} · Weeks ${filteredWeeks[0]?.week || 0}–${filteredWeeks[filteredWeeks.length-1]?.week || 0}`;
+        } else {
+            monthTitleDisplay.style.display = "none";
+        }
+        
+        if (filteredWeeks.length === 0) {
+            container.innerHTML = '<div style="text-align: center; padding: 40px; color: #94a3b8;">No timetable data available</div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        filteredWeeks.forEach((week) => {
+            const card = document.createElement('div');
+            card.className = 'week-card collapsed';
+            const header = document.createElement('div');
+            header.className = 'week-header';
+            header.innerHTML = `
+                <div class="week-title">
+                    <span class="week-num">Week ${week.week}</span>
+                    <span style="font-size:0.8rem; color:#475569;">${week.days.length} sessions</span>
+                </div>
+                <span class="chevron">▼</span>
+            `;
+            const daysContainer = document.createElement('div');
+            daysContainer.className = 'week-days';
+            week.days.forEach(day => {
+                const dayRow = document.createElement('div');
+                dayRow.className = 'day-row';
+                dayRow.innerHTML = `
+                    <div class="day-name">${day.day}</div>
+                    <div class="topic-detail">${day.topics}</div>
+                    <div class="duration">2h</div>
+                `;
+                daysContainer.appendChild(dayRow);
+            });
+            card.appendChild(header);
+            card.appendChild(daysContainer);
+            header.addEventListener('click', (e) => {
+                e.stopPropagation();
+                card.classList.toggle('collapsed');
+            });
+            container.appendChild(card);
+        });
+    }
+
+    // Month selector event handlers
+    function initMonthSelector() {
+        const buttons = document.querySelectorAll('.month-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Update active state
+                buttons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Update current filter
+                currentFilter = btn.getAttribute('data-month');
+                
+                // Rebuild timetable with filtered data
+                buildCollapsibleTimetable();
+            });
+        });
+    }
+
+    // ========== PDF GENERATION - PRESERVED FROM WORKING VERSION ==========
+    async function generatePDF() {
+        const btn = document.getElementById('pdfBtn');
+        if (!btn) return;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '⏳';
+        btn.disabled = true;
+        
+        try {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            
+            pdf.setFontSize(20);
+            pdf.setTextColor(0, 0, 0);
+            
+            let title = 'Tech Mastery Academy - Phase 1 Timetable';
+            if (currentFilter !== "all") {
+                title = `Tech Mastery Academy - ${monthNames[currentFilter]}`;
+            }
+            pdf.text(title, 20, 20);
+            
+            pdf.setFontSize(12);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
+            
+            let yPosition = 45;
+            const pageHeight = 280;
+            
+            function checkPageBreak(requiredSpace, yPos) {
+                if (yPos + requiredSpace > pageHeight) {
+                    pdf.addPage();
+                    return 20;
+                }
+                return yPos;
+            }
+            
+            // Filter data for PDF
+            let pdfWeeks = fullWeeksData;
+            if (currentFilter !== "all") {
+                const monthNum = parseInt(currentFilter);
+                pdfWeeks = fullWeeksData.filter(week => week.month === monthNum);
+            }
+            
+            // System Overview
+            yPosition = checkPageBreak(50, yPosition);
+            pdf.setFontSize(16);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text('1. System Overview', 20, yPosition);
+            yPosition += 10;
+            
+            const systemData = [
+                ['Component', 'Specification'],
+                ['Program Duration', '6 Months (24 Weeks)'],
+                ['Current View', currentFilter === "all" ? 'Full 6-Month Program' : monthNames[currentFilter]],
+                ['Schedule', 'Monday - Friday'],
+                ['Daily Hours', '2 hours per day'],
+                ['Total Hours', '240 hours (Full Program)'],
+                ['Weekend', 'Assignments & Projects']
+            ];
+            
+            pdf.setFontSize(10);
+            systemData.forEach((row, rowIndex) => {
+                yPosition = checkPageBreak(8, yPosition);
+                const isHeader = rowIndex === 0;
+                pdf.setFillColor(isHeader ? 200 : 255);
+                pdf.rect(20, yPosition, 170, 8, 'F');
+                pdf.setTextColor(isHeader ? 0 : 100);
+                pdf.setFont(undefined, isHeader ? 'bold' : 'normal');
+                pdf.text(row[0], 22, yPosition + 5);
+                pdf.text(row[1], 120, yPosition + 5);
+                yPosition += 8;
+            });
+            yPosition += 5;
+            
+            // Weekly Schedule
+            yPosition = checkPageBreak(60, yPosition);
+            pdf.setFontSize(16);
+            pdf.text('2. Weekly Schedule', 20, yPosition);
+            yPosition += 10;
+            
+            pdf.setFontSize(9);
+            pdfWeeks.forEach((week, idx) => {
+                yPosition = checkPageBreak(40, yPosition);
+                pdf.setFont(undefined, 'bold');
+                pdf.text(`Week ${week.week}`, 20, yPosition);
+                yPosition += 5;
+                pdf.setFont(undefined, 'normal');
+                
+                week.days.forEach(day => {
+                    yPosition = checkPageBreak(6, yPosition);
+                    let topicText = day.topics;
+                    if (topicText.length > 85) topicText = topicText.substring(0, 82) + '...';
+                    pdf.text(`  ${day.day}: ${topicText} (2h)`, 22, yPosition);
+                    yPosition += 5;
+                });
+                yPosition += 3;
+            });
+            
+            // Footer
+            if (yPosition + 15 <= pageHeight) {
+                pdf.setFontSize(9);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text('Generated by Tech Mastery Academy - Professional Technology Training', 20, pageHeight - 5);
+            } else {
+                pdf.addPage();
+                pdf.setFontSize(9);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text('Generated by Tech Mastery Academy - Professional Technology Training', 20, 20);
+            }
+            
+            let filename = 'Tech_Mastery_6Month_Timetable.pdf';
+            if (currentFilter !== "all") {
+                filename = `Tech_Mastery_${monthNames[currentFilter].replace(/\s/g, '_')}.pdf`;
+            }
+            pdf.save(filename);
+            
+            btn.innerHTML = '✓';
+            setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 1000);
+            
+        } catch (err) {
+            console.error('PDF error:', err);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            alert('PDF generation error. Please check your connection.');
+        }
+    }
+    
+    // Initialize
+    buildCollapsibleTimetable();
+    initMonthSelector();
+    
+    const pdfButton = document.getElementById('pdfBtn');
+    if (pdfButton) {
+        pdfButton.addEventListener('click', generatePDF);
+        pdfButton.addEventListener('touchstart', () => { pdfButton.style.transform = 'scale(0.94)'; });
+        pdfButton.addEventListener('touchend', () => { pdfButton.style.transform = 'scale(1)'; });
+        pdfButton.addEventListener('mouseleave', () => { pdfButton.style.transform = 'scale(1)'; });
+    }
+    
+    const style = document.createElement('style');
+    style.textContent = `
+        .week-days { overflow-x: hidden; }
+        @media (max-width: 420px) {
+            .day-row { flex-wrap: wrap; gap: 6px; }
+            .day-name { min-width: auto; font-weight: 700; }
+        }
+    `;
+    document.head.appendChild(style);
+</script>
+</body>
+</html>
