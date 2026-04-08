@@ -63,7 +63,7 @@
             flex-wrap: wrap;
             align-items: center;
         }
-        .start-date-info {
+        .start-date-info, .schedule-info {
             font-size: 0.7rem;
             color: #059669;
             background: #d1fae5;
@@ -153,7 +153,7 @@
         .modal-content {
             background: white;
             border-radius: 28px;
-            max-width: 500px;
+            max-width: 550px;
             width: 90%;
             max-height: 85vh;
             overflow-y: auto;
@@ -197,6 +197,15 @@
             font-size: 0.9rem;
             margin-bottom: 10px;
         }
+        .admin-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .admin-input-group .admin-input {
+            flex: 1;
+            margin-bottom: 0;
+        }
         .admin-btn-save {
             background: #0f172a;
             color: white;
@@ -211,6 +220,45 @@
             padding: 12px;
             border-radius: 16px;
             margin-top: 12px;
+        }
+        .warning-note {
+            background: #fef3c7;
+            padding: 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            color: #92400e;
+            margin-top: 10px;
+        }
+        .info-note {
+            background: #dbeafe;
+            padding: 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            color: #1e40af;
+            margin-top: 10px;
+        }
+        .day-checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 12px 0;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 16px;
+        }
+        .day-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+        .day-checkbox input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .day-checkbox label {
+            cursor: pointer;
         }
         .week-card {
             background: #ffffff;
@@ -281,6 +329,13 @@
             line-height: 1.4;
             color: #1e293b;
         }
+        .topic-list {
+            margin: 0;
+            padding-left: 16px;
+        }
+        .topic-list li {
+            margin-bottom: 4px;
+        }
         .duration {
             font-size: 0.7rem;
             color: #6c86a3;
@@ -348,8 +403,9 @@
             <span class="badge">6-Month Program</span>
         </h1>
         <div class="sub">
-            <span>🕒 Mon–Fri (2h/day)</span>
-            <span>🧪 Weekend Projects</span>
+            <span>🕒 <span id="hoursDisplay">2</span>h/day</span>
+            <span>📆 <span id="daysDisplay">5</span> days/week</span>
+            <span id="selectedDaysDisplay" class="schedule-info"></span>
             <span id="startDateDisplay" class="start-date-info"></span>
         </div>
     </div>
@@ -396,191 +452,229 @@
     const STORAGE_KEYS = {
         START_DATE: 'tech_mastery_start_date',
         COMPLETED_TOPICS: 'tech_mastery_completed_topics',
-        ADMIN_AUTH: 'tech_mastery_admin_auth'
+        ADMIN_AUTH: 'tech_mastery_admin_auth',
+        SELECTED_DAYS: 'tech_mastery_selected_days',
+        HOURS_PER_DAY: 'tech_mastery_hours_per_day'
     };
     
     let completedTopics = new Set();
     let startDate = null;
     let isAdminAuthenticated = false;
     let currentFilter = "all";
+    let selectedDays = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    let hoursPerDay = 2;
     
-    // Complete 24-week timetable data
-    const fullWeeksData = [
-        // Month 1: Weeks 1-4
-        { week: 1, month: 1, days: [
-            { day: "Mon", topics: "Intro to Computers (Generations, Types) + CPU, RAM" },
-            { day: "Tue", topics: "Storage (SSD vs HDD) + Motherboard + Power Supply" },
-            { day: "Wed", topics: "Von Neumann Architecture + Peripherals (USB, HDMI, DP)" },
-            { day: "Thu", topics: "Specs & Balance + Basic Troubleshooting (8 steps)" },
-            { day: "Fri", topics: "OS roles (Process, Memory, Drivers) + Win vs macOS vs Linux" }
-        ] },
-        { week: 2, month: 1, days: [
-            { day: "Mon", topics: "File Systems (NTFS, APFS, ext4) + Advanced File Mgmt" },
-            { day: "Tue", topics: "System Settings + Installing/Uninstalling Software" },
-            { day: "Wed", topics: "Strong Passwords (no reuse) + Two-Factor Auth" },
-            { day: "Thu", topics: "Phishing, Scams, Social Engineering + Safe Browsing" },
-            { day: "Fri", topics: "Public WiFi risks + VPN basics + 3-2-1 Backup Rule" }
-        ] },
-        { week: 3, month: 1, days: [
-            { day: "Mon", topics: "What is Code? + Algorithms as step-by-step recipes" },
-            { day: "Tue", topics: "Breaking problems into steps + Flowcharts & Pseudocode" },
-            { day: "Wed", topics: "Pattern recognition + Debugging mindset" },
-            { day: "Thu", topics: "Python env setup (install, IDEs) + Editor choices" },
-            { day: "Fri", topics: "First program: print() + Syntax rules" }
-        ] },
-        { week: 4, month: 1, days: [
-            { day: "Mon", topics: "Variables + Data types (str, int, float, bool)" },
-            { day: "Tue", topics: "Type conversion + Getting user input (input())" },
-            { day: "Wed", topics: "String concatenation + f-strings, format()" },
-            { day: "Thu", topics: "String ops: repetition, len(), indexing, slicing" },
-            { day: "Fri", topics: "Review: variables, data types, string exercises" }
-        ] },
-        // Month 2: Weeks 5-8
-        { week: 5, month: 2, days: [
-            { day: "Mon", topics: "Comparison operators (>, <, ==, !=, >=, <=)" },
-            { day: "Tue", topics: "Conditionals: if, elif, else" },
-            { day: "Wed", topics: "Multiple conditions: and/or, short-circuit" },
-            { day: "Thu", topics: "Nested conditionals + input validation" },
-            { day: "Fri", topics: "Practical coding: login system, grade calculator" }
-        ] },
-        { week: 6, month: 2, days: [
-            { day: "Mon", topics: "for loops with range() (start, stop, step)" },
-            { day: "Tue", topics: "Loop use cases: repetition, sum, pattern printing" },
-            { day: "Wed", topics: "while loops vs for, indefinite iteration" },
-            { day: "Thu", topics: "break, continue, infinite loops" },
-            { day: "Fri", topics: "Nested loops + loop exercises" }
-        ] },
-        { week: 7, month: 2, days: [
-            { day: "Mon", topics: "Error handling: try/except (ValueError, ZeroDivisionError)" },
-            { day: "Tue", topics: "Multiple exceptions + else/finally" },
-            { day: "Wed", topics: "Comprehensive review: variables, conditionals, loops" },
-            { day: "Thu", topics: "Mini-project planning: pseudocode, flowchart" },
-            { day: "Fri", topics: "Mini-project dev session #1" }
-        ] },
-        { week: 8, month: 2, days: [
-            { day: "Mon", topics: "Mini-project dev #2 + debugging" },
-            { day: "Tue", topics: "Project finalization + documentation" },
-            { day: "Wed", topics: "Peer review & feedback" },
-            { day: "Thu", topics: "Final review: all core concepts" },
-            { day: "Fri", topics: "Assessment & Phase 1 completion" }
-        ] },
-        // Month 3: Weeks 9-12
-        { week: 9, month: 3, days: [
-            { day: "Mon", topics: "How the Internet Works: IP, DNS, Packets, Routing" },
-            { day: "Tue", topics: "HTTP/HTTPS Protocol, Status Codes, Client-Server Model" },
-            { day: "Wed", topics: "HTML Basics: Structure, Tags, Semantic Elements" },
-            { day: "Thu", topics: "CSS Fundamentals: Selectors, Box Model, Flexbox" },
-            { day: "Fri", topics: "Browser DevTools: Inspect, Console, Network Tab" }
-        ] },
-        { week: 10, month: 3, days: [
-            { day: "Mon", topics: "JavaScript Basics: Variables, Functions, Events" },
-            { day: "Tue", topics: "DOM Manipulation: Selecting, Modifying Elements" },
-            { day: "Wed", topics: "Forms and Input Handling + Validation" },
-            { day: "Thu", topics: "Web Security: HTTPS, CORS, Same-Origin Policy" },
-            { day: "Fri", topics: "Building a Simple Interactive Web Page" }
-        ] },
-        { week: 11, month: 3, days: [
-            { day: "Mon", topics: "Responsive Design: Media Queries, Mobile-First" },
-            { day: "Tue", topics: "CSS Frameworks: Tailwind CSS Basics" },
-            { day: "Wed", topics: "Local Storage: Saving Data in Browser" },
-            { day: "Thu", topics: "Fetch API: Making HTTP Requests" },
-            { day: "Fri", topics: "Building a Weather App (API Integration)" }
-        ] },
-        { week: 12, month: 3, days: [
-            { day: "Mon", topics: "Web Performance: Optimization Basics" },
-            { day: "Tue", topics: "Accessibility: WCAG Guidelines" },
-            { day: "Wed", topics: "Cross-Browser Compatibility" },
-            { day: "Thu", topics: "Project: Personal Portfolio Website" },
-            { day: "Fri", topics: "Portfolio Review & Deployment (Netlify/Vercel)" }
-        ] },
-        // Month 4: Weeks 13-16
-        { week: 13, month: 4, days: [
-            { day: "Mon", topics: "Linux Command Line: Navigation, File Operations" },
-            { day: "Tue", topics: "Process Management: ps, top, kill, systemctl" },
-            { day: "Wed", topics: "File Permissions: chmod, chown, umask" },
-            { day: "Thu", topics: "Shell Scripting: Variables, Loops, Conditionals" },
-            { day: "Fri", topics: "Automation with Bash Scripts" }
-        ] },
-        { week: 14, month: 4, days: [
-            { day: "Mon", topics: "Network Fundamentals: OSI Model, TCP/IP" },
-            { day: "Tue", topics: "Wireshark: Packet Analysis Basics" },
-            { day: "Wed", topics: "Firewall Configuration: iptables, ufw" },
-            { day: "Thu", topics: "SSH: Secure Remote Access, Key Management" },
-            { day: "Fri", topics: "Network Services: DNS, DHCP Configuration" }
-        ] },
-        { week: 15, month: 4, days: [
-            { day: "Mon", topics: "Cryptography: Hashing, Encryption, Digital Signatures" },
-            { day: "Tue", topics: "SSL/TLS: Certificates, HTTPS Implementation" },
-            { day: "Wed", topics: "Vulnerability Scanning: Nmap, OpenVAS" },
-            { day: "Thu", topics: "OWASP Top 10: Understanding Web Vulnerabilities" },
-            { day: "Fri", topics: "Security Hardening: System Configuration" }
-        ] },
-        { week: 16, month: 4, days: [
-            { day: "Mon", topics: "Incident Response: Detection, Containment, Recovery" },
-            { day: "Tue", topics: "Log Analysis: Monitoring with ELK Stack Basics" },
-            { day: "Wed", topics: "Backup Strategies: Automation, Testing Restores" },
-            { day: "Thu", topics: "Security Compliance: GDPR, ISO 27001 Basics" },
-            { day: "Fri", topics: "Capstone: Security Audit Project" }
-        ] },
-        // Month 5: Weeks 17-20
-        { week: 17, month: 5, days: [
-            { day: "Mon", topics: "OOP: Classes, Objects, Attributes, Methods" },
-            { day: "Tue", topics: "Inheritance, Polymorphism, Encapsulation" },
-            { day: "Wed", topics: "File I/O: Reading, Writing, Parsing Data" },
-            { day: "Thu", topics: "JSON/XML: Data Serialization and Deserialization" },
-            { day: "Fri", topics: "Working with CSV and Excel Files" }
-        ] },
-        { week: 18, month: 5, days: [
-            { day: "Mon", topics: "REST APIs: Design Principles, Endpoints" },
-            { day: "Tue", topics: "Consuming APIs: requests library, authentication" },
-            { day: "Wed", topics: "Building APIs: Flask/FastAPI Basics" },
-            { day: "Thu", topics: "Database Fundamentals: SQL, Tables, Relationships" },
-            { day: "Fri", topics: "SQLite: CRUD Operations with Python" }
-        ] },
-        { week: 19, month: 5, days: [
-            { day: "Mon", topics: "Version Control: Git Branching, Merging, Rebasing" },
-            { day: "Tue", topics: "Collaboration: GitHub Workflows, Pull Requests" },
-            { day: "Wed", topics: "Testing: Unit Tests with pytest" },
-            { day: "Thu", topics: "Debugging Advanced: pdb, logging" },
-            { day: "Fri", topics: "Code Documentation: Docstrings, Sphinx" }
-        ] },
-        { week: 20, month: 5, days: [
-            { day: "Mon", topics: "Data Structures: Lists, Stacks, Queues, Trees" },
-            { day: "Tue", topics: "Algorithms: Sorting, Searching, Recursion" },
-            { day: "Wed", topics: "Time Complexity: Big O Notation" },
-            { day: "Thu", topics: "Project: Library Management System" },
-            { day: "Fri", topics: "Code Review & Optimization" }
-        ] },
-        // Month 6: Weeks 21-24
-        { week: 21, month: 6, days: [
-            { day: "Mon", topics: "Full-Stack Integration: Frontend + Backend + DB" },
-            { day: "Tue", topics: "Authentication: JWT, Sessions, OAuth" },
-            { day: "Wed", topics: "Containerization: Docker Basics" },
-            { day: "Thu", topics: "CI/CD: GitHub Actions Fundamentals" },
-            { day: "Fri", topics: "Cloud Deployment: AWS/GCP Basics" }
-        ] },
-        { week: 22, month: 6, days: [
-            { day: "Mon", topics: "Capstone: Project Planning & Architecture" },
-            { day: "Tue", topics: "Sprint 1: Backend Development" },
-            { day: "Wed", topics: "Sprint 2: Frontend Development" },
-            { day: "Thu", topics: "Sprint 3: Integration & Testing" },
-            { day: "Fri", topics: "Sprint Review & Refinement" }
-        ] },
-        { week: 23, month: 6, days: [
-            { day: "Mon", topics: "Security Testing: Penetration Testing Basics" },
-            { day: "Tue", topics: "Performance Optimization: Load Testing" },
-            { day: "Wed", topics: "Documentation: Technical Writing" },
-            { day: "Thu", topics: "Presentation Skills: Demo Preparation" },
-            { day: "Fri", topics: "Final Project Polish" }
-        ] },
-        { week: 24, month: 6, days: [
-            { day: "Mon", topics: "Final Presentations: Project Demos" },
-            { day: "Tue", topics: "Peer Review & Feedback" },
-            { day: "Wed", topics: "Portfolio Building: GitHub Profile" },
-            { day: "Thu", topics: "Career Preparation: Resume, LinkedIn" },
-            { day: "Fri", topics: "Graduation & Phase 2 Orientation" }
-        ] }
-    ];
+    const allWeekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const dayFullNames = {
+        "Mon": "Monday", "Tue": "Tuesday", "Wed": "Wednesday", 
+        "Thu": "Thursday", "Fri": "Friday", "Sat": "Saturday", "Sun": "Sunday"
+    };
+    
+    // Original topics organized by month (20 topics per month = 120 total)
+    const monthlyTopics = {
+        1: [ // Month 1: Digital Fundamentals
+            "Intro to Computers (Generations, Types) + CPU, RAM",
+            "Storage (SSD vs HDD) + Motherboard + Power Supply",
+            "Von Neumann Architecture + Peripherals (USB, HDMI, DP)",
+            "Specs & Balance + Basic Troubleshooting (8 steps)",
+            "OS roles (Process, Memory, Drivers) + Win vs macOS vs Linux",
+            "File Systems (NTFS, APFS, ext4) + Advanced File Mgmt",
+            "System Settings + Installing/Uninstalling Software",
+            "Strong Passwords (no reuse) + Two-Factor Auth",
+            "Phishing, Scams, Social Engineering + Safe Browsing",
+            "Public WiFi risks + VPN basics + 3-2-1 Backup Rule",
+            "What is Code? + Algorithms as step-by-step recipes",
+            "Breaking problems into steps + Flowcharts & Pseudocode",
+            "Pattern recognition + Debugging mindset",
+            "Python env setup (install, IDEs) + Editor choices",
+            "First program: print() + Syntax rules",
+            "Variables + Data types (str, int, float, bool)",
+            "Type conversion + Getting user input (input())",
+            "String concatenation + f-strings, format()",
+            "String ops: repetition, len(), indexing, slicing",
+            "Review: variables, data types, string exercises"
+        ],
+        2: [ // Month 2: Programming Logic & Control Flow
+            "Comparison operators (>, <, ==, !=, >=, <=)",
+            "Conditionals: if, elif, else",
+            "Multiple conditions: and/or, short-circuit",
+            "Nested conditionals + input validation",
+            "Practical coding: login system, grade calculator",
+            "for loops with range() (start, stop, step)",
+            "Loop use cases: repetition, sum, pattern printing",
+            "while loops vs for, indefinite iteration",
+            "break, continue, infinite loops",
+            "Nested loops + loop exercises",
+            "Error handling: try/except (ValueError, ZeroDivisionError)",
+            "Multiple exceptions + else/finally",
+            "Comprehensive review: variables, conditionals, loops",
+            "Mini-project planning: pseudocode, flowchart",
+            "Mini-project dev session #1",
+            "Mini-project dev #2 + debugging",
+            "Project finalization + documentation",
+            "Peer review & feedback",
+            "Final review: all core concepts",
+            "Assessment & Phase 1 completion"
+        ],
+        3: [ // Month 3: Internet & Web Basics
+            "How the Internet Works: IP, DNS, Packets, Routing",
+            "HTTP/HTTPS Protocol, Status Codes, Client-Server Model",
+            "HTML Basics: Structure, Tags, Semantic Elements",
+            "CSS Fundamentals: Selectors, Box Model, Flexbox",
+            "Browser DevTools: Inspect, Console, Network Tab",
+            "JavaScript Basics: Variables, Functions, Events",
+            "DOM Manipulation: Selecting, Modifying Elements",
+            "Forms and Input Handling + Validation",
+            "Web Security: HTTPS, CORS, Same-Origin Policy",
+            "Building a Simple Interactive Web Page",
+            "Responsive Design: Media Queries, Mobile-First",
+            "CSS Frameworks: Tailwind CSS Basics",
+            "Local Storage: Saving Data in Browser",
+            "Fetch API: Making HTTP Requests",
+            "Building a Weather App (API Integration)",
+            "Web Performance: Optimization Basics",
+            "Accessibility: WCAG Guidelines",
+            "Cross-Browser Compatibility",
+            "Project: Personal Portfolio Website",
+            "Portfolio Review & Deployment (Netlify/Vercel)"
+        ],
+        4: [ // Month 4: Systems Administration & Security
+            "Linux Command Line: Navigation, File Operations",
+            "Process Management: ps, top, kill, systemctl",
+            "File Permissions: chmod, chown, umask",
+            "Shell Scripting: Variables, Loops, Conditionals",
+            "Automation with Bash Scripts",
+            "Network Fundamentals: OSI Model, TCP/IP",
+            "Wireshark: Packet Analysis Basics",
+            "Firewall Configuration: iptables, ufw",
+            "SSH: Secure Remote Access, Key Management",
+            "Network Services: DNS, DHCP Configuration",
+            "Cryptography: Hashing, Encryption, Digital Signatures",
+            "SSL/TLS: Certificates, HTTPS Implementation",
+            "Vulnerability Scanning: Nmap, OpenVAS",
+            "OWASP Top 10: Understanding Web Vulnerabilities",
+            "Security Hardening: System Configuration",
+            "Incident Response: Detection, Containment, Recovery",
+            "Log Analysis: Monitoring with ELK Stack Basics",
+            "Backup Strategies: Automation, Testing Restores",
+            "Security Compliance: GDPR, ISO 27001 Basics",
+            "Capstone: Security Audit Project"
+        ],
+        5: [ // Month 5: Programming Foundations II
+            "OOP: Classes, Objects, Attributes, Methods",
+            "Inheritance, Polymorphism, Encapsulation",
+            "File I/O: Reading, Writing, Parsing Data",
+            "JSON/XML: Data Serialization and Deserialization",
+            "Working with CSV and Excel Files",
+            "REST APIs: Design Principles, Endpoints",
+            "Consuming APIs: requests library, authentication",
+            "Building APIs: Flask/FastAPI Basics",
+            "Database Fundamentals: SQL, Tables, Relationships",
+            "SQLite: CRUD Operations with Python",
+            "Version Control: Git Branching, Merging, Rebasing",
+            "Collaboration: GitHub Workflows, Pull Requests",
+            "Testing: Unit Tests with pytest",
+            "Debugging Advanced: pdb, logging",
+            "Code Documentation: Docstrings, Sphinx",
+            "Data Structures: Lists, Stacks, Queues, Trees",
+            "Algorithms: Sorting, Searching, Recursion",
+            "Time Complexity: Big O Notation",
+            "Project: Library Management System",
+            "Code Review & Optimization"
+        ],
+        6: [ // Month 6: Integration & Capstone Project
+            "Full-Stack Integration: Frontend + Backend + DB",
+            "Authentication: JWT, Sessions, OAuth",
+            "Containerization: Docker Basics",
+            "CI/CD: GitHub Actions Fundamentals",
+            "Cloud Deployment: AWS/GCP Basics",
+            "Capstone: Project Planning & Architecture",
+            "Sprint 1: Backend Development",
+            "Sprint 2: Frontend Development",
+            "Sprint 3: Integration & Testing",
+            "Sprint Review & Refinement",
+            "Security Testing: Penetration Testing Basics",
+            "Performance Optimization: Load Testing",
+            "Documentation: Technical Writing",
+            "Presentation Skills: Demo Preparation",
+            "Final Project Polish",
+            "Final Presentations: Project Demos",
+            "Peer Review & Feedback",
+            "Portfolio Building: GitHub Profile",
+            "Career Preparation: Resume, LinkedIn",
+            "Graduation & Phase 2 Orientation"
+        ]
+    };
+    
+    // Generate dynamic timetable with merged topics per day
+    function generateDynamicTimetable() {
+        const weeksData = [];
+        const totalWeeks = 24;
+        const totalTopics = 120;
+        
+        // Calculate topics per day based on hours
+        const topicsPerDay = Math.floor(hoursPerDay / 2);
+        
+        if (topicsPerDay < 1) {
+            alert(`Warning: With only ${hoursPerDay} hour(s) per day, you cannot complete full topics. Minimum 2 hours per day recommended.`);
+        }
+        
+        let currentMonth = 1;
+        let topicIndex = 0;
+        
+        for (let week = 1; week <= totalWeeks; week++) {
+            const month = Math.ceil(week / 4);
+            const daysMap = new Map(); // Map to store day -> array of topics
+            
+            // For each selected day in the week
+            for (let dayIndex = 0; dayIndex < selectedDays.length; dayIndex++) {
+                const dayName = selectedDays[dayIndex];
+                const dayTopics = [];
+                
+                // Add topics for this day (multiple topics if hours allow)
+                for (let t = 0; t < topicsPerDay; t++) {
+                    if (topicIndex >= totalTopics) break;
+                    
+                    // Get topic from appropriate month
+                    let topic = "";
+                    if (currentMonth <= 6 && monthlyTopics[currentMonth] && 
+                        (topicIndex % 20) < monthlyTopics[currentMonth].length) {
+                        topic = monthlyTopics[currentMonth][topicIndex % 20];
+                    }
+                    
+                    if (topic) {
+                        dayTopics.push(topic);
+                        topicIndex++;
+                    }
+                }
+                
+                if (dayTopics.length > 0) {
+                    daysMap.set(dayName, dayTopics);
+                }
+                
+                // Update current month based on topic progress
+                currentMonth = Math.min(6, Math.ceil((topicIndex + 1) / 20));
+            }
+            
+            // Convert map to array of day objects
+            const days = [];
+            for (let [dayName, topics] of daysMap) {
+                days.push({
+                    day: dayName,
+                    topics: topics,
+                    completed: false
+                });
+            }
+            
+            if (days.length > 0) {
+                weeksData.push({ week, month, days });
+            }
+        }
+        
+        return weeksData;
+    }
+    
+    let fullWeeksData = generateDynamicTimetable();
     
     const monthNames = {
         1: "Month 1: Digital Fundamentals",
@@ -602,7 +696,7 @@
     function getDateForDay(weekNumber, dayName) {
         const weekStart = getWeekStartDate(weekNumber);
         if (!weekStart) return null;
-        const dayMap = { "Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4 };
+        const dayMap = { "Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4, "Sat": 5, "Sun": 6 };
         const offset = dayMap[dayName];
         if (offset !== undefined) {
             const date = new Date(weekStart);
@@ -612,40 +706,49 @@
         return null;
     }
     
-    function getTopicId(week, day, topic) {
-        return `week_${week}_${day}_${topic.substring(0, 50)}`;
+    function getDayTopicId(week, day) {
+        return `week_${week}_${day}`;
     }
     
-    function toggleTopicCompletion(week, day, topic) {
+    function isDayCompleted(week, day) {
+        const dayId = getDayTopicId(week, day);
+        return completedTopics.has(dayId);
+    }
+    
+    function toggleDayCompletion(week, day, topics) {
         if (!isAdminAuthenticated) {
             alert('Admin access required. Click the ⚙️ button to login.');
             return false;
         }
-        const topicId = getTopicId(week, day, topic);
-        if (completedTopics.has(topicId)) {
-            completedTopics.delete(topicId);
+        const dayId = getDayTopicId(week, day);
+        if (completedTopics.has(dayId)) {
+            completedTopics.delete(dayId);
         } else {
-            completedTopics.add(topicId);
+            completedTopics.add(dayId);
         }
         localStorage.setItem(STORAGE_KEYS.COMPLETED_TOPICS, JSON.stringify(Array.from(completedTopics)));
         buildCollapsibleTimetable();
         return true;
     }
     
-    function isTopicCompleted(week, day, topic) {
-        const topicId = getTopicId(week, day, topic);
-        return completedTopics.has(topicId);
-    }
-    
     function getCompletionStats() {
-        let totalTopics = 0, completedCount = 0;
+        let totalDays = 0, completedDays = 0;
         fullWeeksData.forEach(week => {
             week.days.forEach(day => {
-                totalTopics++;
-                if (isTopicCompleted(week.week, day.day, day.topics)) completedCount++;
+                totalDays++;
+                if (isDayCompleted(week.week, day.day)) completedDays++;
             });
         });
-        return { totalTopics, completedCount, percentage: totalTopics > 0 ? (completedCount / totalTopics * 100).toFixed(1) : 0 };
+        
+        // Calculate total topics covered
+        let totalTopics = 0;
+        fullWeeksData.forEach(week => {
+            week.days.forEach(day => {
+                totalTopics += day.topics.length;
+            });
+        });
+        
+        return { totalDays, completedDays, totalTopics, percentage: totalDays > 0 ? (completedDays / totalDays * 100).toFixed(1) : 0 };
     }
     
     function buildCollapsibleTimetable() {
@@ -674,13 +777,13 @@
             let weekTotal = week.days.length;
             let weekCompleted = 0;
             week.days.forEach(day => {
-                if (isTopicCompleted(week.week, day.day, day.topics)) weekCompleted++;
+                if (isDayCompleted(week.week, day.day)) weekCompleted++;
             });
             
             header.innerHTML = `
                 <div class="week-title">
                     <span class="week-num">Week ${week.week}</span>
-                    <span style="font-size:0.7rem; color:#10b981;">${weekCompleted}/${weekTotal} done</span>
+                    <span style="font-size:0.7rem; color:#10b981;">${weekCompleted}/${weekTotal} days done</span>
                 </div>
                 <span class="chevron">▼</span>
             `;
@@ -688,7 +791,7 @@
             daysContainer.className = 'week-days';
             week.days.forEach(day => {
                 const dayRow = document.createElement('div');
-                const isCompleted = isTopicCompleted(week.week, day.day, day.topics);
+                const isCompleted = isDayCompleted(week.week, day.day);
                 dayRow.className = `day-row ${isCompleted ? 'completed' : ''}`;
                 const checkmark = isCompleted ? ' ✅' : '';
                 
@@ -696,14 +799,19 @@
                 const dateStr = dateObj ? dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
                 const dateHtml = dateStr ? `<span class="date-badge">📅 ${dateStr}</span>` : '';
                 
+                // Create topics list HTML
+                const topicsListHtml = day.topics.length > 1 
+                    ? `<ul class="topic-list">${day.topics.map(t => `<li>${t}</li>`).join('')}</ul>`
+                    : day.topics[0];
+                
                 dayRow.innerHTML = `
                     <div class="day-name">${day.day} ${dateHtml}</div>
-                    <div class="topic-detail">${day.topics}${checkmark}</div>
-                    <div class="duration">2h</div>
+                    <div class="topic-detail">${topicsListHtml}${checkmark}</div>
+                    <div class="duration">${hoursPerDay}h</div>
                 `;
                 dayRow.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    toggleTopicCompletion(week.week, day.day, day.topics);
+                    toggleDayCompletion(week.week, day.day, day.topics);
                 });
                 daysContainer.appendChild(dayRow);
             });
@@ -721,13 +829,35 @@
             const statsBar = document.createElement('div');
             statsBar.className = 'stats';
             statsBar.innerHTML = `
-                <strong>📊 Overall Progress:</strong> ${stats.completedCount}/${stats.totalTopics} (${stats.percentage}%)
+                <strong>📊 Overall Progress:</strong> ${stats.completedDays}/${stats.totalDays} days completed (${stats.percentage}%)
                 <div style="background:#e2e8f0; border-radius:10px; margin-top:6px; overflow:hidden;">
                     <div style="background:#10b981; width:${stats.percentage}%; height:6px;"></div>
                 </div>
+                <div style="margin-top:8px; font-size:0.7rem;">📚 Total topics covered: ${stats.totalTopics}</div>
             `;
             container.insertBefore(statsBar, container.firstChild);
         }
+    }
+    
+    function updateScheduleDisplay() {
+        document.getElementById('hoursDisplay').textContent = hoursPerDay;
+        document.getElementById('daysDisplay').textContent = selectedDays.length;
+        const daysStr = selectedDays.map(d => dayFullNames[d]).join(', ');
+        document.getElementById('selectedDaysDisplay').innerHTML = `📅 ${daysStr}`;
+    }
+    
+    function regenerateTimetable() {
+        fullWeeksData = generateDynamicTimetable();
+        // Clear completed topics when schedule changes
+        if (confirm('Changing class schedule will reset all completion progress. Continue?')) {
+            completedTopics.clear();
+            localStorage.setItem(STORAGE_KEYS.COMPLETED_TOPICS, JSON.stringify([]));
+        }
+        buildCollapsibleTimetable();
+        updateScheduleDisplay();
+        
+        const stats = getCompletionStats();
+        alert(`Schedule updated!\n\nNew schedule will cover ${stats.totalTopics} topics over ${stats.totalDays} class days.\nEach day: ${hoursPerDay} hours of instruction.\nTopics per day: ${Math.floor(hoursPerDay / 2)}\nSelected days: ${selectedDays.map(d => dayFullNames[d]).join(', ')}`);
     }
     
     async function generatePDF() {
@@ -741,7 +871,6 @@
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF('landscape');
             
-            // Header
             pdf.setFontSize(22);
             pdf.setTextColor(0, 0, 0);
             let title = 'Tech Mastery Academy - 6-Month Timetable';
@@ -756,9 +885,11 @@
             if (startDate) {
                 pdf.text(`Program Start Date: ${startDate.toLocaleDateString()}`, 14, 28);
             }
+            const daysStr = selectedDays.map(d => dayFullNames[d]).join(', ');
+            pdf.text(`Schedule: ${selectedDays.length} days/week (${daysStr}), ${hoursPerDay} hours/day`, 14, 34);
             
             const stats = getCompletionStats();
-            pdf.text(`Overall Progress: ${stats.completedCount}/${stats.totalTopics} topics completed (${stats.percentage}%)`, 14, 34);
+            pdf.text(`Overall Progress: ${stats.completedDays}/${stats.totalDays} days completed (${stats.percentage}%)`, 14, 40);
             
             let filteredWeeks = fullWeeksData;
             if (currentFilter !== "all") {
@@ -766,51 +897,50 @@
                 filteredWeeks = fullWeeksData.filter(week => week.month === monthNum);
             }
             
-            let yPos = 42;
+            let yPos = 48;
             
             for (let weekIndex = 0; weekIndex < filteredWeeks.length; weekIndex++) {
                 const week = filteredWeeks[weekIndex];
                 
-                // Check if we need a new page
                 if (yPos > 180) {
                     pdf.addPage('landscape');
                     yPos = 20;
                 }
                 
-                // Add week header
                 let weekCompleted = 0;
                 week.days.forEach(day => {
-                    if (isTopicCompleted(week.week, day.day, day.topics)) weekCompleted++;
+                    if (isDayCompleted(week.week, day.day)) weekCompleted++;
                 });
                 
                 pdf.setFontSize(12);
                 pdf.setTextColor(0, 0, 0);
                 pdf.setFont(undefined, 'bold');
-                pdf.text(`Week ${week.week} (${weekCompleted}/${week.days.length} completed)`, 14, yPos);
+                pdf.text(`Week ${week.week} (${weekCompleted}/${week.days.length} days completed)`, 14, yPos);
                 yPos += 6;
                 
-                // Create table data with emoji status
                 const tableData = [];
                 week.days.forEach(day => {
-                    const isCompleted = isTopicCompleted(week.week, day.day, day.topics);
-                    // Use green checkmark emoji for completed, empty string for incomplete
+                    const isCompleted = isDayCompleted(week.week, day.day);
                     const status = isCompleted ? '✅' : '';
                     const dateObj = getDateForDay(week.week, day.day);
                     const dateStr = dateObj ? dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date not set';
+                    
+                    // Join multiple topics with line breaks
+                    const topicsText = day.topics.length > 1 ? day.topics.join('\n• ') : day.topics[0];
+                    const displayTopics = day.topics.length > 1 ? `• ${topicsText}` : topicsText;
                     
                     tableData.push([
                         status,
                         day.day,
                         dateStr,
-                        day.topics,
-                        '2h'
+                        displayTopics,
+                        `${hoursPerDay}h`
                     ]);
                 });
                 
-                // Generate table
                 pdf.autoTable({
                     startY: yPos,
-                    head: [['', 'Day', 'Date', 'Topic', 'Duration']],
+                    head: [['', 'Day', 'Date', 'Topics Covered', 'Duration']],
                     body: tableData,
                     theme: 'striped',
                     headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -833,7 +963,6 @@
                 yPos = pdf.lastAutoTable.finalY + 8;
             }
             
-            // Footer
             const pageCount = pdf.getNumberOfPages();
             for (let i = 1; i <= pageCount; i++) {
                 pdf.setPage(i);
@@ -868,6 +997,16 @@
             completedTopics = new Set(JSON.parse(savedCompleted));
         }
         
+        const savedSelectedDays = localStorage.getItem(STORAGE_KEYS.SELECTED_DAYS);
+        if (savedSelectedDays) {
+            selectedDays = JSON.parse(savedSelectedDays);
+        }
+        
+        const savedHours = localStorage.getItem(STORAGE_KEYS.HOURS_PER_DAY);
+        if (savedHours) {
+            hoursPerDay = parseInt(savedHours);
+        }
+        
         const savedAuth = sessionStorage.getItem(STORAGE_KEYS.ADMIN_AUTH);
         if (savedAuth === 'true') isAdminAuthenticated = true;
         
@@ -875,6 +1014,8 @@
         if (display && startDate) {
             display.innerHTML = `📅 Start: ${startDate.toLocaleDateString()}`;
         }
+        
+        updateScheduleDisplay();
     }
     
     function initMonthSelector() {
@@ -898,6 +1039,7 @@
         const adminContent = document.getElementById('adminContent');
         if (isAdminAuthenticated) {
             const stats = getCompletionStats();
+            const topicsPerDay = Math.floor(hoursPerDay / 2);
             adminContent.innerHTML = `
                 <div class="admin-section">
                     <h3>📅 Program Start Date</h3>
@@ -905,12 +1047,35 @@
                     <button id="saveStartDateBtn" class="admin-btn-save">Save Start Date</button>
                 </div>
                 <div class="admin-section">
+                    <h3>📆 Select Class Days & Hours</h3>
+                    <div class="day-checkbox-group" id="dayCheckboxGroup">
+                        ${allWeekDays.map(day => `
+                            <div class="day-checkbox">
+                                <input type="checkbox" id="day_${day}" value="${day}" ${selectedDays.includes(day) ? 'checked' : ''}>
+                                <label for="day_${day}">${dayFullNames[day]}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="admin-input-group">
+                        <input type="number" id="hoursInput" class="admin-input" min="2" max="8" step="2" value="${hoursPerDay}" placeholder="Hours/day">
+                    </div>
+                    <button id="saveScheduleBtn" class="admin-btn-save">Apply Schedule Changes</button>
+                    <div class="info-note">
+                        💡 Based on ${hoursPerDay} hours/day, each class day will cover ${topicsPerDay} topic(s).<br>
+                        Total topics: 120 | Total weeks: 24
+                    </div>
+                    <div class="warning-note">
+                        ⚠️ Changing schedule will reset all completion progress and regenerate the timetable.
+                    </div>
+                </div>
+                <div class="admin-section">
                     <h3>📊 Completion Statistics</h3>
                     <div class="stats">
-                        <strong>Progress:</strong> ${stats.completedCount}/${stats.totalTopics} (${stats.percentage}%)
+                        <strong>Progress:</strong> ${stats.completedDays}/${stats.totalDays} days completed (${stats.percentage}%)
                         <div style="background:#e2e8f0; border-radius:10px; margin-top:6px;">
                             <div style="background:#10b981; width:${stats.percentage}%; height:8px; border-radius:10px;"></div>
                         </div>
+                        <div style="margin-top:8px;">📚 Total topics covered: ${stats.totalTopics}</div>
                     </div>
                 </div>
                 <div class="admin-section">
@@ -928,6 +1093,39 @@
                     document.getElementById('startDateDisplay').innerHTML = `📅 Start: ${startDate.toLocaleDateString()}`;
                     buildCollapsibleTimetable();
                     alert('Start date updated!');
+                }
+            });
+            
+            document.getElementById('saveScheduleBtn')?.addEventListener('click', () => {
+                const newSelectedDays = [];
+                allWeekDays.forEach(day => {
+                    const checkbox = document.getElementById(`day_${day}`);
+                    if (checkbox && checkbox.checked) {
+                        newSelectedDays.push(day);
+                    }
+                });
+                
+                let newHours = parseInt(document.getElementById('hoursInput').value);
+                
+                if (newSelectedDays.length === 0) {
+                    alert('Please select at least one class day!');
+                    return;
+                }
+                
+                if (newHours < 2) {
+                    alert('Minimum 2 hours per day required to cover topics effectively!');
+                    newHours = 2;
+                }
+                
+                if (newHours >= 2 && newHours <= 8) {
+                    selectedDays = newSelectedDays;
+                    hoursPerDay = newHours;
+                    localStorage.setItem(STORAGE_KEYS.SELECTED_DAYS, JSON.stringify(selectedDays));
+                    localStorage.setItem(STORAGE_KEYS.HOURS_PER_DAY, hoursPerDay);
+                    regenerateTimetable();
+                    updateAdminContent();
+                } else {
+                    alert('Please enter valid hours (2-8, in increments of 2 recommended)');
                 }
             });
             
@@ -975,6 +1173,7 @@
     }
     
     loadSavedData();
+    fullWeeksData = generateDynamicTimetable();
     buildCollapsibleTimetable();
     initMonthSelector();
     
