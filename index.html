@@ -318,7 +318,7 @@
             background: #f0fdf4;
         }
         .day-name {
-            min-width: 70px;
+            min-width: 80px;
             font-weight: 600;
             font-size: 0.8rem;
             color: #475569;
@@ -347,8 +347,9 @@
         .date-badge {
             font-size: 0.65rem;
             color: #6c86a3;
-            margin-left: 8px;
+            margin-top: 4px;
             font-weight: normal;
+            display: block;
         }
         .week-list {
             padding: 12px 16px 20px 16px;
@@ -427,7 +428,7 @@
     
     <div class="weekend-note">
         📌 <strong>Weekend projects</strong> — practical tasks: security audits, Python coding, flowcharts & capstone prep.<br>
-        💡 <strong>Tip:</strong> Click on any topic to mark as completed (Admin only)
+        💡 <strong>Tip:</strong> Click on any day to mark all topics as completed (Admin only)
     </div>
     <div class="footer-text">
         ✅ Complete 6-Month Foundation | Next: Phase 2 (Security, Software, Embedded)
@@ -451,13 +452,13 @@
     const ADMIN_PASSWORD = "admin123";
     const STORAGE_KEYS = {
         START_DATE: 'tech_mastery_start_date',
-        COMPLETED_TOPICS: 'tech_mastery_completed_topics',
+        COMPLETED_DAYS: 'tech_mastery_completed_days',
         ADMIN_AUTH: 'tech_mastery_admin_auth',
         SELECTED_DAYS: 'tech_mastery_selected_days',
         HOURS_PER_DAY: 'tech_mastery_hours_per_day'
     };
     
-    let completedTopics = new Set();
+    let completedDays = new Set();
     let startDate = null;
     let isAdminAuthenticated = false;
     let currentFilter = "all";
@@ -468,6 +469,10 @@
     const dayFullNames = {
         "Mon": "Monday", "Tue": "Tuesday", "Wed": "Wednesday", 
         "Thu": "Thursday", "Fri": "Friday", "Sat": "Saturday", "Sun": "Sunday"
+    };
+    
+    const dayOrder = {
+        "Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4, "Sat": 5, "Sun": 6
     };
     
     // Original topics organized by month (20 topics per month = 120 total)
@@ -606,6 +611,38 @@
         ]
     };
     
+    // Get the actual date for a specific week and day based on the start date
+    function getDateForDay(weekNumber, dayName) {
+        if (!startDate) return null;
+        
+        // Create a date object from the start date
+        const baseDate = new Date(startDate);
+        
+        // Calculate days to add: (week-1)*7 + offset for the day
+        // The offset is based on the day of week of the start date
+        const startDayOfWeek = baseDate.getDay(); // 0=Sunday, 1=Monday, etc.
+        
+        // Convert our day names to JavaScript day indices (0=Sunday, 1=Monday, etc.)
+        const dayIndices = { "Sun": 0, "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6 };
+        const targetDayIndex = dayIndices[dayName];
+        
+        // Calculate days to add to reach the target day
+        let daysToAdd = targetDayIndex - startDayOfWeek;
+        
+        // If the target day is earlier in the week, add 7 days to go to next week
+        if (daysToAdd < 0) {
+            daysToAdd += 7;
+        }
+        
+        // Add weeks offset
+        const totalDaysToAdd = (weekNumber - 1) * 7 + daysToAdd;
+        
+        const resultDate = new Date(baseDate);
+        resultDate.setDate(baseDate.getDate() + totalDaysToAdd);
+        
+        return resultDate;
+    }
+    
     // Generate dynamic timetable with merged topics per day
     function generateDynamicTimetable() {
         const weeksData = [];
@@ -616,7 +653,7 @@
         const topicsPerDay = Math.floor(hoursPerDay / 2);
         
         if (topicsPerDay < 1) {
-            alert(`Warning: With only ${hoursPerDay} hour(s) per day, you cannot complete full topics. Minimum 2 hours per day recommended.`);
+            console.warn(`Warning: With only ${hoursPerDay} hour(s) per day, you cannot complete full topics. Minimum 2 hours per day recommended.`);
         }
         
         let currentMonth = 1;
@@ -626,9 +663,11 @@
             const month = Math.ceil(week / 4);
             const daysMap = new Map(); // Map to store day -> array of topics
             
-            // For each selected day in the week
-            for (let dayIndex = 0; dayIndex < selectedDays.length; dayIndex++) {
-                const dayName = selectedDays[dayIndex];
+            // For each selected day in the week, sorted by day order
+            const sortedSelectedDays = [...selectedDays].sort((a, b) => dayOrder[a] - dayOrder[b]);
+            
+            for (let dayIndex = 0; dayIndex < sortedSelectedDays.length; dayIndex++) {
+                const dayName = sortedSelectedDays[dayIndex];
                 const dayTopics = [];
                 
                 // Add topics for this day (multiple topics if hours allow)
@@ -659,12 +698,20 @@
             // Convert map to array of day objects
             const days = [];
             for (let [dayName, topics] of daysMap) {
+                // Calculate the actual date for this day
+                const actualDate = getDateForDay(week, dayName);
+                const dateStr = actualDate ? actualDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date not set';
+                
                 days.push({
                     day: dayName,
                     topics: topics,
-                    completed: false
+                    date: actualDate,
+                    dateStr: dateStr
                 });
             }
+            
+            // Sort days by day order
+            days.sort((a, b) => dayOrder[a.day] - dayOrder[b.day]);
             
             if (days.length > 0) {
                 weeksData.push({ week, month, days });
@@ -685,58 +732,37 @@
         6: "Month 6: Integration & Capstone Project"
     };
     
-    function getWeekStartDate(weekNumber) {
-        if (!startDate) return null;
-        const start = new Date(startDate);
-        const daysToAdd = (weekNumber - 1) * 7;
-        start.setDate(start.getDate() + daysToAdd);
-        return start;
-    }
-    
-    function getDateForDay(weekNumber, dayName) {
-        const weekStart = getWeekStartDate(weekNumber);
-        if (!weekStart) return null;
-        const dayMap = { "Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4, "Sat": 5, "Sun": 6 };
-        const offset = dayMap[dayName];
-        if (offset !== undefined) {
-            const date = new Date(weekStart);
-            date.setDate(weekStart.getDate() + offset);
-            return date;
-        }
-        return null;
-    }
-    
-    function getDayTopicId(week, day) {
+    function getDayId(week, day) {
         return `week_${week}_${day}`;
     }
     
     function isDayCompleted(week, day) {
-        const dayId = getDayTopicId(week, day);
-        return completedTopics.has(dayId);
+        const dayId = getDayId(week, day);
+        return completedDays.has(dayId);
     }
     
-    function toggleDayCompletion(week, day, topics) {
+    function toggleDayCompletion(week, day) {
         if (!isAdminAuthenticated) {
             alert('Admin access required. Click the ⚙️ button to login.');
             return false;
         }
-        const dayId = getDayTopicId(week, day);
-        if (completedTopics.has(dayId)) {
-            completedTopics.delete(dayId);
+        const dayId = getDayId(week, day);
+        if (completedDays.has(dayId)) {
+            completedDays.delete(dayId);
         } else {
-            completedTopics.add(dayId);
+            completedDays.add(dayId);
         }
-        localStorage.setItem(STORAGE_KEYS.COMPLETED_TOPICS, JSON.stringify(Array.from(completedTopics)));
+        localStorage.setItem(STORAGE_KEYS.COMPLETED_DAYS, JSON.stringify(Array.from(completedDays)));
         buildCollapsibleTimetable();
         return true;
     }
     
     function getCompletionStats() {
-        let totalDays = 0, completedDays = 0;
+        let totalDays = 0, completedDaysCount = 0;
         fullWeeksData.forEach(week => {
             week.days.forEach(day => {
                 totalDays++;
-                if (isDayCompleted(week.week, day.day)) completedDays++;
+                if (isDayCompleted(week.week, day.day)) completedDaysCount++;
             });
         });
         
@@ -748,7 +774,7 @@
             });
         });
         
-        return { totalDays, completedDays, totalTopics, percentage: totalDays > 0 ? (completedDays / totalDays * 100).toFixed(1) : 0 };
+        return { totalDays, completedDays: completedDaysCount, totalTopics, percentage: totalDays > 0 ? (completedDaysCount / totalDays * 100).toFixed(1) : 0 };
     }
     
     function buildCollapsibleTimetable() {
@@ -780,9 +806,15 @@
                 if (isDayCompleted(week.week, day.day)) weekCompleted++;
             });
             
+            // Get week start and end dates for display
+            const weekStartDate = week.days[0]?.date;
+            const weekEndDate = week.days[week.days.length - 1]?.date;
+            const dateRange = weekStartDate && weekEndDate ? 
+                ` (${weekStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : '';
+            
             header.innerHTML = `
                 <div class="week-title">
-                    <span class="week-num">Week ${week.week}</span>
+                    <span class="week-num">Week ${week.week}${dateRange}</span>
                     <span style="font-size:0.7rem; color:#10b981;">${weekCompleted}/${weekTotal} days done</span>
                 </div>
                 <span class="chevron">▼</span>
@@ -795,23 +827,22 @@
                 dayRow.className = `day-row ${isCompleted ? 'completed' : ''}`;
                 const checkmark = isCompleted ? ' ✅' : '';
                 
-                const dateObj = getDateForDay(week.week, day.day);
-                const dateStr = dateObj ? dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-                const dateHtml = dateStr ? `<span class="date-badge">📅 ${dateStr}</span>` : '';
-                
                 // Create topics list HTML
                 const topicsListHtml = day.topics.length > 1 
                     ? `<ul class="topic-list">${day.topics.map(t => `<li>${t}</li>`).join('')}</ul>`
                     : day.topics[0];
                 
                 dayRow.innerHTML = `
-                    <div class="day-name">${day.day} ${dateHtml}</div>
+                    <div class="day-name">
+                        ${day.day}
+                        <span class="date-badge">${day.dateStr}</span>
+                    </div>
                     <div class="topic-detail">${topicsListHtml}${checkmark}</div>
                     <div class="duration">${hoursPerDay}h</div>
                 `;
                 dayRow.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    toggleDayCompletion(week.week, day.day, day.topics);
+                    toggleDayCompletion(week.week, day.day);
                 });
                 daysContainer.appendChild(dayRow);
             });
@@ -844,14 +875,18 @@
         document.getElementById('daysDisplay').textContent = selectedDays.length;
         const daysStr = selectedDays.map(d => dayFullNames[d]).join(', ');
         document.getElementById('selectedDaysDisplay').innerHTML = `📅 ${daysStr}`;
+        
+        if (startDate) {
+            document.getElementById('startDateDisplay').innerHTML = `📅 Start: ${startDate.toLocaleDateString()}`;
+        }
     }
     
     function regenerateTimetable() {
         fullWeeksData = generateDynamicTimetable();
-        // Clear completed topics when schedule changes
+        // Clear completed days when schedule changes
         if (confirm('Changing class schedule will reset all completion progress. Continue?')) {
-            completedTopics.clear();
-            localStorage.setItem(STORAGE_KEYS.COMPLETED_TOPICS, JSON.stringify([]));
+            completedDays.clear();
+            localStorage.setItem(STORAGE_KEYS.COMPLETED_DAYS, JSON.stringify([]));
         }
         buildCollapsibleTimetable();
         updateScheduleDisplay();
@@ -922,8 +957,6 @@
                 week.days.forEach(day => {
                     const isCompleted = isDayCompleted(week.week, day.day);
                     const status = isCompleted ? '✅' : '';
-                    const dateObj = getDateForDay(week.week, day.day);
-                    const dateStr = dateObj ? dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date not set';
                     
                     // Join multiple topics with line breaks
                     const topicsText = day.topics.length > 1 ? day.topics.join('\n• ') : day.topics[0];
@@ -932,7 +965,7 @@
                     tableData.push([
                         status,
                         day.day,
-                        dateStr,
+                        day.dateStr,
                         displayTopics,
                         `${hoursPerDay}h`
                     ]);
@@ -987,14 +1020,14 @@
         if (savedStartDate) {
             startDate = new Date(savedStartDate);
         } else {
+            // Default to today if no date set
             startDate = new Date();
-            startDate.setDate(startDate.getDate() - (startDate.getDay() + 6) % 7);
             localStorage.setItem(STORAGE_KEYS.START_DATE, startDate.toISOString());
         }
         
-        const savedCompleted = localStorage.getItem(STORAGE_KEYS.COMPLETED_TOPICS);
+        const savedCompleted = localStorage.getItem(STORAGE_KEYS.COMPLETED_DAYS);
         if (savedCompleted) {
-            completedTopics = new Set(JSON.parse(savedCompleted));
+            completedDays = new Set(JSON.parse(savedCompleted));
         }
         
         const savedSelectedDays = localStorage.getItem(STORAGE_KEYS.SELECTED_DAYS);
@@ -1009,11 +1042,6 @@
         
         const savedAuth = sessionStorage.getItem(STORAGE_KEYS.ADMIN_AUTH);
         if (savedAuth === 'true') isAdminAuthenticated = true;
-        
-        const display = document.getElementById('startDateDisplay');
-        if (display && startDate) {
-            display.innerHTML = `📅 Start: ${startDate.toLocaleDateString()}`;
-        }
         
         updateScheduleDisplay();
     }
@@ -1040,11 +1068,18 @@
         if (isAdminAuthenticated) {
             const stats = getCompletionStats();
             const topicsPerDay = Math.floor(hoursPerDay / 2);
+            
+            // Format the current start date for the date input
+            const formattedDate = startDate ? startDate.toISOString().split('T')[0] : '';
+            
             adminContent.innerHTML = `
                 <div class="admin-section">
                     <h3>📅 Program Start Date</h3>
-                    <input type="date" id="startDateInput" class="admin-input" value="${startDate ? startDate.toISOString().split('T')[0] : ''}">
+                    <input type="date" id="startDateInput" class="admin-input" value="${formattedDate}">
                     <button id="saveStartDateBtn" class="admin-btn-save">Save Start Date</button>
+                    <div class="info-note">
+                        💡 The timetable will start on this exact date. All class dates will be calculated from this date.
+                    </div>
                 </div>
                 <div class="admin-section">
                     <h3>📆 Select Class Days & Hours</h3>
@@ -1090,9 +1125,9 @@
                 if (newDate) {
                     startDate = new Date(newDate);
                     localStorage.setItem(STORAGE_KEYS.START_DATE, startDate.toISOString());
-                    document.getElementById('startDateDisplay').innerHTML = `📅 Start: ${startDate.toLocaleDateString()}`;
-                    buildCollapsibleTimetable();
-                    alert('Start date updated!');
+                    updateScheduleDisplay();
+                    regenerateTimetable();
+                    alert('Start date updated! Timetable regenerated with new dates.');
                 }
             });
             
@@ -1131,8 +1166,8 @@
             
             document.getElementById('resetCompletedBtn')?.addEventListener('click', () => {
                 if (confirm('Reset all completed topics?')) {
-                    completedTopics.clear();
-                    localStorage.setItem(STORAGE_KEYS.COMPLETED_TOPICS, JSON.stringify([]));
+                    completedDays.clear();
+                    localStorage.setItem(STORAGE_KEYS.COMPLETED_DAYS, JSON.stringify([]));
                     buildCollapsibleTimetable();
                     updateAdminContent();
                 }
