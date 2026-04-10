@@ -135,6 +135,27 @@
         }
         .admin-btn:active { transform: scale(0.94); }
 
+        .share-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 90px;
+            background: #10b981;
+            width: 52px;
+            height: 52px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            cursor: pointer;
+            border: none;
+            color: white;
+            font-size: 1.3rem;
+            transition: 0.15s ease;
+            z-index: 200;
+        }
+        .share-btn:active { transform: scale(0.94); }
+
         .modal {
             display: none;
             position: fixed;
@@ -258,6 +279,27 @@
             cursor: pointer;
         }
         .day-checkbox label {
+            cursor: pointer;
+        }
+        .share-link-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .share-link-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            background: #f8fafc;
+        }
+        .copy-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
             cursor: pointer;
         }
         .week-card {
@@ -436,6 +478,7 @@
 </div>
 
 <button class="admin-btn" id="adminBtn">⚙️</button>
+<button class="share-btn" id="shareBtn">🔗</button>
 <button class="fab" id="pdfBtn" aria-label="Export PDF">📄</button>
 
 <div id="adminModal" class="modal">
@@ -445,6 +488,25 @@
             <button class="close-modal" id="closeModalBtn">✕</button>
         </div>
         <div id="adminContent"></div>
+    </div>
+</div>
+
+<div id="shareModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🔗 Share Timetable</h2>
+            <button class="close-modal" id="closeShareModalBtn">✕</button>
+        </div>
+        <div class="admin-section">
+            <h3>Shareable Link</h3>
+            <div class="share-link-container">
+                <input type="text" id="shareLinkInput" class="share-link-input" readonly>
+                <button id="copyLinkBtn" class="copy-btn">Copy</button>
+            </div>
+            <div class="info-note">
+                💡 Anyone with this link will see the EXACT same timetable (same start date, class days, and hours).
+            </div>
+        </div>
     </div>
 </div>
 
@@ -615,28 +677,17 @@
     function getDateForDay(weekNumber, dayName) {
         if (!startDate) return null;
         
-        // Create a date object from the start date
         const baseDate = new Date(startDate);
-        
-        // Calculate days to add: (week-1)*7 + offset for the day
-        // The offset is based on the day of week of the start date
-        const startDayOfWeek = baseDate.getDay(); // 0=Sunday, 1=Monday, etc.
-        
-        // Convert our day names to JavaScript day indices (0=Sunday, 1=Monday, etc.)
+        const startDayOfWeek = baseDate.getDay();
         const dayIndices = { "Sun": 0, "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6 };
         const targetDayIndex = dayIndices[dayName];
         
-        // Calculate days to add to reach the target day
         let daysToAdd = targetDayIndex - startDayOfWeek;
-        
-        // If the target day is earlier in the week, add 7 days to go to next week
         if (daysToAdd < 0) {
             daysToAdd += 7;
         }
         
-        // Add weeks offset
         const totalDaysToAdd = (weekNumber - 1) * 7 + daysToAdd;
-        
         const resultDate = new Date(baseDate);
         resultDate.setDate(baseDate.getDate() + totalDaysToAdd);
         
@@ -648,8 +699,6 @@
         const weeksData = [];
         const totalWeeks = 24;
         const totalTopics = 120;
-        
-        // Calculate topics per day based on hours
         const topicsPerDay = Math.floor(hoursPerDay / 2);
         
         if (topicsPerDay < 1) {
@@ -661,20 +710,16 @@
         
         for (let week = 1; week <= totalWeeks; week++) {
             const month = Math.ceil(week / 4);
-            const daysMap = new Map(); // Map to store day -> array of topics
-            
-            // For each selected day in the week, sorted by day order
+            const daysMap = new Map();
             const sortedSelectedDays = [...selectedDays].sort((a, b) => dayOrder[a] - dayOrder[b]);
             
             for (let dayIndex = 0; dayIndex < sortedSelectedDays.length; dayIndex++) {
                 const dayName = sortedSelectedDays[dayIndex];
                 const dayTopics = [];
                 
-                // Add topics for this day (multiple topics if hours allow)
                 for (let t = 0; t < topicsPerDay; t++) {
                     if (topicIndex >= totalTopics) break;
                     
-                    // Get topic from appropriate month
                     let topic = "";
                     if (currentMonth <= 6 && monthlyTopics[currentMonth] && 
                         (topicIndex % 20) < monthlyTopics[currentMonth].length) {
@@ -691,14 +736,11 @@
                     daysMap.set(dayName, dayTopics);
                 }
                 
-                // Update current month based on topic progress
                 currentMonth = Math.min(6, Math.ceil((topicIndex + 1) / 20));
             }
             
-            // Convert map to array of day objects
             const days = [];
             for (let [dayName, topics] of daysMap) {
-                // Calculate the actual date for this day
                 const actualDate = getDateForDay(week, dayName);
                 const dateStr = actualDate ? actualDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date not set';
                 
@@ -710,7 +752,6 @@
                 });
             }
             
-            // Sort days by day order
             days.sort((a, b) => dayOrder[a.day] - dayOrder[b.day]);
             
             if (days.length > 0) {
@@ -731,6 +772,46 @@
         5: "Month 5: Programming Foundations II",
         6: "Month 6: Integration & Capstone Project"
     };
+    
+    // URL parameter handling for sharing
+    function encodeSettingsToURL() {
+        const settings = {
+            startDate: startDate ? startDate.toISOString() : null,
+            selectedDays: selectedDays,
+            hoursPerDay: hoursPerDay
+        };
+        const encoded = btoa(JSON.stringify(settings));
+        const url = new URL(window.location.href);
+        url.searchParams.set('timetable', encoded);
+        return url.toString();
+    }
+    
+    function loadSettingsFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const encodedSettings = urlParams.get('timetable');
+        
+        if (encodedSettings) {
+            try {
+                const settings = JSON.parse(atob(encodedSettings));
+                if (settings.startDate) {
+                    startDate = new Date(settings.startDate);
+                    localStorage.setItem(STORAGE_KEYS.START_DATE, startDate.toISOString());
+                }
+                if (settings.selectedDays) {
+                    selectedDays = settings.selectedDays;
+                    localStorage.setItem(STORAGE_KEYS.SELECTED_DAYS, JSON.stringify(selectedDays));
+                }
+                if (settings.hoursPerDay) {
+                    hoursPerDay = settings.hoursPerDay;
+                    localStorage.setItem(STORAGE_KEYS.HOURS_PER_DAY, hoursPerDay);
+                }
+                return true;
+            } catch (e) {
+                console.error('Failed to parse URL settings:', e);
+            }
+        }
+        return false;
+    }
     
     function getDayId(week, day) {
         return `week_${week}_${day}`;
@@ -766,7 +847,6 @@
             });
         });
         
-        // Calculate total topics covered
         let totalTopics = 0;
         fullWeeksData.forEach(week => {
             week.days.forEach(day => {
@@ -806,7 +886,6 @@
                 if (isDayCompleted(week.week, day.day)) weekCompleted++;
             });
             
-            // Get week start and end dates for display
             const weekStartDate = week.days[0]?.date;
             const weekEndDate = week.days[week.days.length - 1]?.date;
             const dateRange = weekStartDate && weekEndDate ? 
@@ -827,7 +906,6 @@
                 dayRow.className = `day-row ${isCompleted ? 'completed' : ''}`;
                 const checkmark = isCompleted ? ' ✅' : '';
                 
-                // Create topics list HTML
                 const topicsListHtml = day.topics.length > 1 
                     ? `<ul class="topic-list">${day.topics.map(t => `<li>${t}</li>`).join('')}</ul>`
                     : day.topics[0];
@@ -883,7 +961,6 @@
     
     function regenerateTimetable() {
         fullWeeksData = generateDynamicTimetable();
-        // Clear completed days when schedule changes
         if (confirm('Changing class schedule will reset all completion progress. Continue?')) {
             completedDays.clear();
             localStorage.setItem(STORAGE_KEYS.COMPLETED_DAYS, JSON.stringify([]));
@@ -958,7 +1035,6 @@
                     const isCompleted = isDayCompleted(week.week, day.day);
                     const status = isCompleted ? '✅' : '';
                     
-                    // Join multiple topics with line breaks
                     const topicsText = day.topics.length > 1 ? day.topics.join('\n• ') : day.topics[0];
                     const displayTopics = day.topics.length > 1 ? `• ${topicsText}` : topicsText;
                     
@@ -1016,28 +1092,33 @@
     }
     
     function loadSavedData() {
-        const savedStartDate = localStorage.getItem(STORAGE_KEYS.START_DATE);
-        if (savedStartDate) {
-            startDate = new Date(savedStartDate);
-        } else {
-            // Default to today if no date set
-            startDate = new Date();
-            localStorage.setItem(STORAGE_KEYS.START_DATE, startDate.toISOString());
+        // First try to load from URL (this ensures shared links work)
+        const loadedFromURL = loadSettingsFromURL();
+        
+        if (!loadedFromURL) {
+            // Only load from localStorage if no URL params
+            const savedStartDate = localStorage.getItem(STORAGE_KEYS.START_DATE);
+            if (savedStartDate) {
+                startDate = new Date(savedStartDate);
+            } else {
+                startDate = new Date();
+                localStorage.setItem(STORAGE_KEYS.START_DATE, startDate.toISOString());
+            }
+            
+            const savedSelectedDays = localStorage.getItem(STORAGE_KEYS.SELECTED_DAYS);
+            if (savedSelectedDays) {
+                selectedDays = JSON.parse(savedSelectedDays);
+            }
+            
+            const savedHours = localStorage.getItem(STORAGE_KEYS.HOURS_PER_DAY);
+            if (savedHours) {
+                hoursPerDay = parseInt(savedHours);
+            }
         }
         
         const savedCompleted = localStorage.getItem(STORAGE_KEYS.COMPLETED_DAYS);
         if (savedCompleted) {
             completedDays = new Set(JSON.parse(savedCompleted));
-        }
-        
-        const savedSelectedDays = localStorage.getItem(STORAGE_KEYS.SELECTED_DAYS);
-        if (savedSelectedDays) {
-            selectedDays = JSON.parse(savedSelectedDays);
-        }
-        
-        const savedHours = localStorage.getItem(STORAGE_KEYS.HOURS_PER_DAY);
-        if (savedHours) {
-            hoursPerDay = parseInt(savedHours);
         }
         
         const savedAuth = sessionStorage.getItem(STORAGE_KEYS.ADMIN_AUTH);
@@ -1063,13 +1144,17 @@
         updateAdminContent();
     }
     
+    function showShareModal() {
+        const shareLink = encodeSettingsToURL();
+        document.getElementById('shareLinkInput').value = shareLink;
+        document.getElementById('shareModal').classList.add('active');
+    }
+    
     function updateAdminContent() {
         const adminContent = document.getElementById('adminContent');
         if (isAdminAuthenticated) {
             const stats = getCompletionStats();
             const topicsPerDay = Math.floor(hoursPerDay / 2);
-            
-            // Format the current start date for the date input
             const formattedDate = startDate ? startDate.toISOString().split('T')[0] : '';
             
             adminContent.innerHTML = `
@@ -1207,17 +1292,33 @@
         document.getElementById('adminModal').classList.remove('active');
     }
     
+    function closeShareModal() {
+        document.getElementById('shareModal').classList.remove('active');
+    }
+    
     loadSavedData();
     fullWeeksData = generateDynamicTimetable();
     buildCollapsibleTimetable();
     initMonthSelector();
     
     document.getElementById('adminBtn').addEventListener('click', showAdminModal);
+    document.getElementById('shareBtn').addEventListener('click', showShareModal);
     document.getElementById('closeModalBtn').addEventListener('click', closeAdminModal);
+    document.getElementById('closeShareModalBtn').addEventListener('click', closeShareModal);
     document.getElementById('adminModal').addEventListener('click', (e) => {
         if (e.target === document.getElementById('adminModal')) closeAdminModal();
     });
+    document.getElementById('shareModal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('shareModal')) closeShareModal();
+    });
     document.getElementById('pdfBtn').addEventListener('click', generatePDF);
+    
+    document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
+        const linkInput = document.getElementById('shareLinkInput');
+        linkInput.select();
+        document.execCommand('copy');
+        alert('Shareable link copied to clipboard!');
+    });
 </script>
 </body>
 </html>
